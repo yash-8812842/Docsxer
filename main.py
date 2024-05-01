@@ -11,15 +11,12 @@ from langchain.chains.question_answering import load_qa_chain
 from langchain.prompts import PromptTemplate
 from PyPDF2 import PdfReader
 from pptx import Presentation
-
+from streamlit_chat import message
+from langchain.schema import AIMessage, HumanMessage
 
 
 
 os.environ["GOOGLE_API_KEY"] = "AIzaSyBfRzQtaS_d6pDoAx-eU-IqCrfQUBr0_Jo"
-
-
-
-
 
 
 
@@ -62,13 +59,15 @@ def get_conversational_chain():
     NOTE:
     1) Answer the question as detailed as possible from the provided context, make sure to provide all the details, if the answer is not in provided context just say, "Answer is not available in the context", don't provide the wrong answer.
 
-    2)Try to give detailed answers. User might also give you a condition related to marks, answer questions acording to the marks.
-    
-    3) Display the response in beautiful manner this will help user to understand it properly.
-    
-    4) May be you sometimes receive Greetings message or applause from the user, response them in gentle manner.
+    2) You have access to users local files.
 
-    5) Your identity is, you are "Docsxer"
+    3)Try to give detailed answers. User might also give you a condition related to marks, answer questions acording to the marks.
+    
+    4) Display the response in beautiful manner this will help user to understand it properly.
+    
+    5) May be you sometimes receive Greetings message or applause from the user, response them in gentle manner.
+
+    6) Your identity is, you are "Docsxer"
     \n\n
     Context:\n {context}?\n
     Question: \n{question}\n
@@ -99,19 +98,13 @@ def user_input(user_question):
         {"input_documents":docs, "question": user_question}
         , return_only_outputs=True)
 
-    st.write(response["output_text"])
+    return response["output_text"]
 
 
 
 
 def main():
     st.set_page_config("Chat PDF")
-    st.header("Chat with PDF using Gemini🧐")
-
-    user_question = st.text_input("Ask a Question from the PDF Files")
-
-    if user_question:
-        user_input(user_question)
 
     with st.sidebar:
         st.title("Menu:")
@@ -122,6 +115,37 @@ def main():
                 text_chunks = get_text_chunks(raw_text)
                 get_vector_store(text_chunks)
                 st.success("Done")
+
+    text = """Hey there, great to meet you. I'm Docsxer, your personal Question-Answering chatbot.
+            My goal is to help you in finding you answers from your study material.
+            Provide me related document and start a chit chat for accurate and full scoring answers
+            """
+    
+    message(text,is_user=False)
+
+    if 'messages' not in st.session_state:
+        st.session_state.messages = []
+
+
+    user_question = st.chat_input("Ask a Question from the PDF Files")
+
+
+    if user_question:
+        st.session_state.messages.append(HumanMessage(content=user_question))
+        response = user_input(user_question)
+        st.session_state.messages.append(AIMessage(content=response))
+
+    messages = st.session_state.get('messages',[])
+    
+    
+    for num,res in enumerate(messages):
+        if num%2 == 0:
+            message(res.content,is_user=True,key = str(num)+'_user')
+        else:
+            message(res.content,is_user=False,key = str(num)+'_system')
+
+
+
 
 
 
