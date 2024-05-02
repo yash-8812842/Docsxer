@@ -8,16 +8,18 @@ import google.generativeai as genai
 from langchain_community.vectorstores import FAISS
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.chains.question_answering import load_qa_chain
-from langchain.prompts import PromptTemplate
+from langchain.chains import LLMChain,ConversationChain
+from langchain.memory import ConversationBufferMemory
+from langchain.prompts import PromptTemplate,ChatPromptTemplate,HumanMessagePromptTemplate
 from PyPDF2 import PdfReader
 from pptx import Presentation
 from streamlit_chat import message
-from langchain.schema import AIMessage, HumanMessage
+from langchain.schema import AIMessage, HumanMessage,SystemMessage
+
 
 
 
 os.environ["GOOGLE_API_KEY"] = "AIzaSyBfRzQtaS_d6pDoAx-eU-IqCrfQUBr0_Jo"
-
 
 
 def get_pdf_text(uploaded_file):
@@ -84,6 +86,36 @@ def get_conversational_chain():
     return chain
 
 
+def get_default_chain(query):
+
+
+    prompt_template = """
+    You are an AI bot who only used to greet user input.
+    Understand the user input and according to that respond to the query.
+
+    NOTE:
+    1) Your identity is Docsxer, you are a personal Question-Answering chatbot. Your goal is to help user in finding answers from study material.User will provide related document and start a chit chat for accurate and full scoring answers. 
+
+    2) You only respond to greetings, except greetings do not respond to any other question asked by user.Respond them with SORRY! I can not answer this query.
+
+    3) Respond According to yourself just add a sentence. I am a task specific assistant.
+
+    4) Do not include your training by Google anywhere.
+    {history}
+    user_input : {query}
+    """
+
+    llm = ChatGoogleGenerativeAI(model="gemini-pro",temperature=0.3)
+
+    
+    prompt = PromptTemplate(template=prompt_template,input_variables=['query'])
+    chain = ConversationChain(llm=llm,memory = ConversationBufferMemory())
+
+    response = chain.invoke(input=query)
+
+    return response['response']
+
+
 
 def user_input(user_question):
     embeddings = GoogleGenerativeAIEmbeddings(model = "models/embedding-001")
@@ -132,8 +164,14 @@ def main():
 
     if user_question:
         st.session_state.messages.append(HumanMessage(content=user_question))
-        response = user_input(user_question)
-        st.session_state.messages.append(AIMessage(content=response))
+
+        try :
+            response = user_input(user_question)
+        except Exception:
+            response = get_default_chain(user_question)
+            st.session_state.messages.append(AIMessage(content=response))
+        else:
+            st.session_state.messages.append(AIMessage(content=response))
 
     messages = st.session_state.get('messages',[])
     
