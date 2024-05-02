@@ -168,7 +168,7 @@ def main():
         st.session_state.messages.append(HumanMessage(content=user_question))
 
         try :
-            response = user_input(user_question)
+            response = user_input(user_question+'beautify your response.')
         except Exception:
             response = get_default_chain(user_question)
             st.session_state.messages.append(AIMessage(content=response))
