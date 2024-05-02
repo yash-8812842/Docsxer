@@ -90,17 +90,16 @@ def get_default_chain(query):
 
 
     prompt_template = """
-    You are an AI bot who only used to greet user input.
-    Understand the user input and according to that respond to the query.
+    Your identity is Docsxer, you are a personal Question-Answering chatbot. Your goal is to help user in finding answers from study material.User will provide related document and start a chit chat for accurate and full scoring answers. 
+
 
     NOTE:
-    1) Your identity is Docsxer, you are a personal Question-Answering chatbot. Your goal is to help user in finding answers from study material.User will provide related document and start a chit chat for accurate and full scoring answers. 
+    1)You only respond to greetings, except greetings do not respond to any other question asked by user.Respond them with SORRY! I can not answer this query.
 
-    2) You only respond to greetings, except greetings do not respond to any other question asked by user.Respond them with SORRY! I can not answer this query.
+    2)Respond According to yourself just add a sentence. I am a task specific assistant.
 
-    3) Respond According to yourself just add a sentence. I am a task specific assistant.
+    3)Do not include your training by Google anywhere.
 
-    4) Do not include your training by Google anywhere.
     {history}
     user_input : {query}
     """
@@ -139,14 +138,17 @@ def main():
     st.set_page_config("Chat PDF")
 
     with st.sidebar:
-        st.title("Menu:")
-        pdf_docs = st.file_uploader("Upload your PDF Files and Click on the Submit & Process Button", accept_multiple_files=True)
-        if st.button("Submit & Process"):
-            with st.spinner("Processing..."):
-                raw_text = get_pdf_text(pdf_docs)
-                text_chunks = get_text_chunks(raw_text)
-                get_vector_store(text_chunks)
-                st.success("Done")
+        st.title("Start by uploading your files here 👇")
+        pdf_docs = st.file_uploader("", accept_multiple_files=True)
+        button = st.button("Submit & Process")
+
+        if pdf_docs:
+            if button:
+                with st.spinner("Processing..."):
+                    raw_text = get_pdf_text(pdf_docs)
+                    text_chunks = get_text_chunks(raw_text)
+                    get_vector_store(text_chunks)
+                    st.success("Done")
 
     text = """Hey there, great to meet you. I'm Docsxer, your personal Question-Answering chatbot.
             My goal is to help you in finding you answers from your study material.
@@ -159,7 +161,7 @@ def main():
         st.session_state.messages = []
 
 
-    user_question = st.chat_input("Ask a Question from the PDF Files")
+    user_question = st.chat_input("Ask your questions here")
 
 
     if user_question:
