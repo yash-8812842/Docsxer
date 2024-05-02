@@ -135,7 +135,7 @@ def user_input(user_question):
 
 
 def main():
-    st.set_page_config("Chat PDF")
+    st.set_page_config("Docsxer - You AI assistant")
 
     with st.sidebar:
         st.title("Start by uploading your files here 👇")
