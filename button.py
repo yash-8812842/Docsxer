@@ -56,6 +56,12 @@ def get_vector_store(text_chunks,embedding_name):
     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
     vector_store.save_local(embedding_name)
 
+def add_new_text(previous_embeddings, text_chunks):
+    embeddings = GoogleGenerativeAIEmbeddings(model = "models/embedding-001")
+    add_vector_store = FAISS.load_local(previous_embeddings,embeddings=embeddings,allow_dangerous_deserialization=True)
+    add_vector_store = add_vector_store.afrom_texts(texts=[text_chunks],embedding=embeddings)
+    add_vector_store.save_local(previous_embeddings)
+
 
 
 def get_conversational_chain():
@@ -173,8 +179,12 @@ def main():
                         text_chunks = get_text_chunks(raw_text)
                         try:
                             FAISS.load_local(email_input, embeddings = embeddings, allow_dangerous_deserialization=True)
+
+                            add_new_text(previous_embeddings=email_input,text_chunks=str(text_chunks))
                         except Exception:
                             get_vector_store(text_chunks,email_input)
+
+                            
                         
 
 
