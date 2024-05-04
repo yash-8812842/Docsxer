@@ -16,6 +16,7 @@ from pptx import Presentation
 from streamlit_chat import message
 from langchain.schema import AIMessage, HumanMessage,SystemMessage
 from streamlit_float import float_init,float_dialog
+from langchain_core.documents import Document
 
 
 
@@ -23,12 +24,10 @@ from streamlit_float import float_init,float_dialog
 os.environ["GOOGLE_API_KEY"] = "AIzaSyBfRzQtaS_d6pDoAx-eU-IqCrfQUBr0_Jo"
 embeddings = GoogleGenerativeAIEmbeddings(model = "models/embedding-001")
 
-
 def get_pdf_text(uploaded_file):
+    text = ''
     if uploaded_file is not None:
-
         for i in uploaded_file:
-            text = ''
             if i.name.split('.')[-1] == 'pdf':
                 pdf = PdfReader(i)
                 for page in pdf.pages:
@@ -47,21 +46,27 @@ def get_pdf_text(uploaded_file):
 
 def get_text_chunks(text):
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=10000, chunk_overlap=1000)
-    chunks = text_splitter.split_text(text=text)
+    chunks = text_splitter.split_documents(documents=text)
     return chunks
 
 
 def get_vector_store(text_chunks,embedding_name):
     embeddings = GoogleGenerativeAIEmbeddings(model = "models/embedding-001")
-    vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
+    vector_store = FAISS.from_documents(documents=text_chunks, embedding=embeddings)
     vector_store.save_local(embedding_name)
 
 def add_new_text(previous_embeddings, text_chunks):
     embeddings = GoogleGenerativeAIEmbeddings(model = "models/embedding-001")
-    add_vector_store = FAISS.load_local(previous_embeddings,embeddings=embeddings,allow_dangerous_deserialization=True)
-    add_vector_store = add_vector_store.afrom_texts(texts=[text_chunks],embedding=embeddings)
+
+    previous_vector_store = FAISS.load_local(previous_embeddings,embeddings=embeddings,allow_dangerous_deserialization=True)
+
+    add_vector_store = FAISS.from_documents(documents=text_chunks, embedding=embeddings)
+
+    add_vector_store.merge_from(previous_vector_store)
+
     add_vector_store.save_local(previous_embeddings)
 
+    
 
 
 def get_conversational_chain():
@@ -175,14 +180,18 @@ def main():
             if pdf_docs:
                 if button:
                     with st.spinner("Processing..."):
-                        raw_text = get_pdf_text(pdf_docs)
+                        raw_text = [Document(page_content=get_pdf_text(pdf_docs))]
                         text_chunks = get_text_chunks(raw_text)
                         try:
                             FAISS.load_local(email_input, embeddings = embeddings, allow_dangerous_deserialization=True)
 
-                            add_new_text(previous_embeddings=email_input,text_chunks=str(text_chunks))
                         except Exception:
+                            st.write("Creating new embeddings")
                             get_vector_store(text_chunks,email_input)
+                        
+                        else:
+                            st.write("Add some new embeddings to previous one.")
+                            add_new_text(previous_embeddings=email_input,text_chunks=text_chunks)
 
                             
                         
@@ -210,7 +219,7 @@ def main():
             st.session_state.messages.append(HumanMessage(content=user_question))
 
             try :
-                response = user_input(user_question+'beautify your response.',embedding_name=email_input)
+                response = user_input(user_question+' beautify your response.',embedding_name=email_input)
             except Exception:
                 response = get_default_chain(user_question)
                 st.session_state.messages.append(AIMessage(content=response))
